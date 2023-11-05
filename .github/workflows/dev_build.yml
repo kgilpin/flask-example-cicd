@@ -5,13 +5,30 @@ name: DEV - Build and Unittest
 
 on:
   push:
-    branches-ignore: [ main ]
+    branches:
+      - main
+  pull_request:
+  schedule:
+    - cron: '0 0 * * 0'
+
+permissions:
+  # Allows the EndBug/add-and-commit step to commit the package manager changes,
+  # adding the AppMap language library and configuration file appmap.yml.
+  # Once the EndBug/add-and-commit is removed, this permission can be removed, 
+  # unless you need it for other reasons.
+  contents: write
+
+  # Allows the getappmap/archive-action to write a PR comment with the 
+  # AppMap configuration status.
+  pull-requests: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.ref }}
     - name: Set up Python 3.x
       uses: actions/setup-python@v2
       with:
@@ -19,11 +36,25 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install --upgrade cython
         pip install flake8
         pip install -r requirements.txt        
     - name: Install project
       run: |
         pip install -e .
+    # Begin AppMap CI language agent installation
+    # This snippet can be safely removed once the AppMap language agent has been
+    # added to the project dependencies, and appmap.yml has been created.
+    - name: Install AppMap tools
+      id: install-appmap
+      uses: getappmap/install-action@v1
+      with:
+        project-type: pip
+    - name: Commit changes
+      uses: EndBug/add-and-commit@v9
+      with:
+        message: "ci: Add AppMap language agent and appmap.yml"
+    # End AppMap CI language agent installation
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -36,6 +67,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.ref }}
     - name: Set up Python 3.x
       uses: actions/setup-python@v2
       with:
@@ -53,3 +86,10 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+    # Begin AppMap bootstrap archive step
+    - name: Archive AppMaps
+      id: appmap-bootstrap-archive-appmaps
+      uses: getappmap/archive-action@v1
+      with:
+        revision: ${{ github.event.pull_request.base.sha }}
+    # End AppMap bootstrap archive step
