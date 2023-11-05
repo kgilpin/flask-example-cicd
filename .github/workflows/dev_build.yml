@@ -5,6 +5,12 @@ name: DEV - Build and Unittest
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    - cron: '0 0 * * 0'
+  push:
     branches-ignore: [ main ]
 
 permissions:
